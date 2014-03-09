@@ -1,0 +1,404 @@
+<html>
+<head>
+<title>TITLE</title>
+<script type="text/javascript">
+var canvas, ctx;
+var width=400, height=400;
+var car_width=50;
+var car_height=20;
+var MAX_SPEED = 5;
+var MAX_BACK_SPEED = 2;
+var ACCELERATION = 0.1;
+var angle = 4;
+var napred=false;
+var lijevo=false;
+var desno=false;
+var nazad=false;
+var animFrame;
+var carImage;
+var boja_koja_se_trazi = [255,0,0,255];
+var odstupanje_boje=5;
+//var lines = [[301,89,101,50]];
+var lines = [[200,30,77,46]];
+var pravokutnici;
+var linesThroughQuadrants = [];
+var TEMP_TOCKA_ZA_BRISANJE = [];
+var pozadina = new Image();
+ccc=0;
+window.onload = function(){
+    
+    canvas = document.getElementById("canvas_id");
+    ctx = canvas.getContext("2d");
+	animFrame = window.requestAnimationFrame ||
+	            window.webkitRequestAnimationFrame ||
+	            window.mozRequestAnimationFrame    ||
+	            window.oRequestAnimationFrame      ||
+	            window.msRequestAnimationFrame     ||
+	            null ;
+	game(); //starta igricu
+}
+
+document.onkeydown = function(e){
+	var key_code = e.which;
+
+	switch(key_code){
+		case 38:
+			napred=true;
+			e.preventDefault();
+			break;
+		
+		case 37:
+			lijevo=true;
+			e.preventDefault();
+			break;
+		
+		case 39:
+			desno=true;
+			e.preventDefault();
+			break;
+		case 40:
+			nazad=true;
+			e.preventDefault();
+			break;
+	}
+}
+
+document.onkeyup = function(e){
+	var key_code = e.which;
+	switch(key_code){
+		case 38:
+			napred=false;
+			e.preventDefault();
+			break;
+		
+		case 37:
+			lijevo=false;
+			e.preventDefault();
+			break;
+		
+		case 39:
+			desno=false;
+			e.preventDefault();
+			break;
+		case 40:
+			nazad=false;
+			e.preventDefault();
+			break;
+	}
+}
+
+//tocka
+CanvasRenderingContext2D.prototype.point = function(x,y,label){
+	ctx.beginPath();
+	ctx.arc(x, y, 2, 0, Math.PI*2, true); 
+	ctx.closePath();
+	ctx.fillText(label,x+5,y-5,15);
+	ctx.fill();
+}
+
+CanvasRenderingContext2D.prototype.fillCircle = function(x,y,r){
+	ctx.beginPath();
+	ctx.arc(x, y, r, 0, Math.PI*2, true); 
+	ctx.closePath();
+	ctx.fill();
+}
+
+CanvasRenderingContext2D.prototype.fillKvadrant = function(x,y,color){
+	ctx.fillStyle=color;
+	ctx.fillRect(x*car_width, y*car_height, car_width,car_height);
+	ctx.fillStyle="black";
+}
+function range(begin, end){
+	var temp_arr = [];
+	for(var i=begin;i<=end;i++)temp_arr.push(i);
+	return temp_arr;
+}
+
+
+function pointInQuadrant(x,y){
+	return [Math.floor(x/car_width), Math.floor(y/car_height)];
+}
+
+function lenBetweenPoints(x1,y1,x2,y2){
+	return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
+}
+//klasa auto
+function car(){
+	var rotate = 0;//Math.PI/6;
+	var deg_rotate=0;
+	var x=50;
+	var y=30;
+	var w=50;
+	var h=20;
+	var a=0; //akceleracije
+	var smjer = new vector(0,0);
+	var reverse = false;
+	var smog = [];
+	var smog_counter=40;
+	
+	this.rotate = function(deg){
+		/*
+		kao i brojevna kruznica
+		*/
+		rotate = -deg * Math.PI/180;
+		rotate%=(Math.PI*2);
+	}
+	this.collision = function(){
+		var u_kojim_kockicama = [];
+		napred_na_autu = [x+w/2+5+Math.cos(rotate)*(w/2), y+h/2+5+Math.sin(rotate)*(w/2)]
+		iza_na_autu = [x+w/2+5-Math.cos(rotate)*(w/2), y+h/2+5+Math.sin(-rotate)*(w/2)]
+		
+		gore_lijevo = [napred_na_autu[0]+Math.sin(rotate)*h/2, napred_na_autu[1]-Math.cos(rotate)*h/2];
+		gore_desno = [napred_na_autu[0]+Math.sin(-rotate)*h/2, napred_na_autu[1]+Math.cos(rotate)*h/2];
+		iza_lijevo=[iza_na_autu[0]+Math.sin(rotate)*h/2, iza_na_autu[1]-Math.cos(rotate)*h/2];
+		iza_desno=[iza_na_autu[0]+Math.sin(-rotate)*h/2, iza_na_autu[1]+Math.cos(rotate)*h/2];
+		
+		
+		ctx.point(gore_lijevo[0], gore_lijevo[1],"A"); //gore lijevo
+		ctx.point(gore_desno[0],gore_desno[1],"B"); //gore desno
+		ctx.point(iza_lijevo[0],iza_lijevo[1],"C"); //iza lijevo
+		ctx.point(iza_desno[0],iza_desno[1],"D"); //iza desno
+
+
+		
+		/*if(typeof prvo != 'undefined')
+		for(var p in prvo){
+			ctx.fillKvadrant(prvo[p][0],prvo[p][1],"rgba(22,66,88,0.6)");
+		}*/
+	}
+	function update(){
+		//smjer.i = Math.cos(rotate)*a;
+		//smjer.j = Math.sin(rotate)*a;
+		smjer.i = Math.cos(rotate)*a;
+		smjer.j = Math.sin(rotate)*a;
+		if(reverse){
+			smjer.j*=-1;
+			smjer.i*=-1;
+		}
+		x+=smjer.i;
+		y+=smjer.j;
+	}
+	
+	this.calculate = function(){
+		if(napred){
+			reverse = false;
+			if(a>=MAX_SPEED)
+				a=MAX_SPEED;
+			else
+				a+=ACCELERATION;
+			update();
+		}else if(nazad){
+			reverse = true;
+			if(a>=MAX_BACK_SPEED)
+				a=MAX_BACK_SPEED;
+			else
+				a+=ACCELERATION;
+			update();
+		}else{
+			if(a>=0){
+				a-=ACCELERATION;
+				update();
+			}
+		}
+
+		
+		/*if(nazad){
+			if(a>=MAX_BACK_SPEED)
+				a=MAX_BACK_SPEED;
+			else
+				a+=ACCELERATION;
+			update();
+		}*/
+		
+		
+		if(a>0){
+			if(reverse)
+				temp_kut = -a*angle/MAX_SPEED; //namjerno je MAX_SPEED a ne MAX_BACK_SPEED
+			else
+				temp_kut = a*angle/MAX_SPEED;
+			
+			if(desno){
+				deg_rotate-=temp_kut;
+				this.rotate(deg_rotate);
+			}
+			else if (lijevo){
+				deg_rotate+=temp_kut;
+				this.rotate(deg_rotate);
+			}
+		}
+		
+		/*
+		
+		Vy = cos(kut) * v
+		
+		*/
+		//y+=()
+	}
+	this.draw = function(){
+		this.calculate();
+		this.collision();
+
+		ctx.save();
+		ctx.translate(x + w/2 +5,y + h/2+5);
+		ctx.rotate(rotate);
+		//ctx.fillRect(-w/2,-h/2,w,h);
+		ctx.drawImage(carImage,-w/2,-h/2,w,h);
+		ctx.restore();
+		//tocka za desni gore kraj
+		//cos(a) = 
+		ctx.beginPath();
+		ctx.moveTo(x+w/2+5,y+h/2+5)
+		ctx.lineTo(x+w/2+5+smjer.i*20,y+h/2+5+smjer.j*20);
+		ctx.stroke();
+		for(l in TEMP_TOCKA_ZA_BRISANJE)
+		ctx.point(TEMP_TOCKA_ZA_BRISANJE[l][0],TEMP_TOCKA_ZA_BRISANJE[l][1],"FUCK");
+		
+		//ctx.point(x+w/2+5+w/2, y+h/2+5+Math.sin(rotate)*(h/2+5)+h/2,"A");
+		
+		
+		
+		//SMOG
+		//samo ako se mice
+		//tj ako je a>0
+		smog_counter+=1;
+		smog_counter%=5;
+		if(a>0 && smog_counter==0){
+			var novi_smog = [x+w/2+5-Math.cos(rotate)*(w/2)-Math.cos(rotate)*10, y+h/2+5+Math.sin(-rotate)*(w/2) + Math.sin(-rotate)*10, 1];
+			//ctx.point(x+w/2+5-Math.cos(rotate)*(w/2)-Math.cos(rotate)*10, y+h/2+5+Math.sin(-rotate)*(w/2) + Math.sin(-rotate)*10,"S");
+			smog.push(novi_smog);
+		}
+		
+		for(var i=smog.length-1;i>0;i--){
+			if (typeof smog[i]=='undefined')continue;
+			ctx.fillStyle='rgba(123,99,100,'+smog[i][2]+')';
+			smog[i][2]-=0.03;
+			ctx.fillCircle(smog[i][0],smog[i][1],5*(2-2*smog[i][2]));
+			ctx.fillCircle(smog[i][0]+2,smog[i][1],5*(2-2*smog[i][2]));
+			ctx.fillCircle(smog[i][0],smog[i][1]-2,5*(2-2*smog[i][2]));
+			if(smog[i][2]<=0){
+				delete(smog[i]);
+				continue;
+			}
+		
+		}
+		ctx.fillStyle='black';
+		
+		/*
+		od:
+		A-B
+		B-C
+		C-D
+		C-A
+		*/
+		
+		kvadranti_za_pobojat = {};
+		//kvadranti_za_pobojat[]=1;
+		//prvo maleni: A-B, C-D
+		//ctx.fillText(kv,90,90);
+		//ctx.strokeRect(x+w/2-20,y+h/2-20,50,50);
+	}
+	
+}
+
+//class game
+function game(){
+	var auto = new car();
+	
+	var virtual_canvas = document.createElement('canvas');
+	virtual_canvas.setAttribute('width',width);
+	virtual_canvas.setAttribute('height',height);
+	var virtual_canvas_ctx = virtual_canvas.getContext('2d');
+	var virtual_canvas_image=new Image();
+	
+	var virtual_canvas_for_background1 = document.createElement('canvas');
+	var virtual_canvas_for_background = virtual_canvas_for_background1.getContext("2d");
+	virtual_canvas_for_background1.setAttribute('width',width);
+	virtual_canvas_for_background1.setAttribute('height',height);
+	
+	
+	var crvene_tocke = [];
+	function loadImages(){
+		carImage = new Image();
+		pozadina.src = 'map.png';
+		carImage.src = 'auto.png';
+		virtual_canvas_for_background.drawImage(pozadina,0,0);
+	}
+	
+	function draw(){
+		ctx.clearRect(0,0,width,height);
+		
+		for(p in linesThroughQuadrants){
+				ctx.fillKvadrant(linesThroughQuadrants[p][0],linesThroughQuadrants[p][1],"red");
+		}
+		ctx.drawImage(virtual_canvas_image,0,0);
+		ctx.drawImage(pozadina,0,0);
+		auto.draw();
+		animFrame(draw);
+	}
+	
+	function init(){
+		//proci kroz sve linije i smjestit ih u odg array
+		//kreirati polje za pravokutnike
+		
+		/*pravokutnici = new Array(Math.floor(width/car_width));
+		
+		for(var i=0;i<pravokutnici.length;i++){
+			pravokutnici[i] = new Array(Math.floor(height/car_height))
+		}
+		
+		
+		for(l in lines){
+			virtual_canvas_ctx.beginPath();
+			virtual_canvas_ctx.moveTo(lines[l][0],lines[l][1]);
+			virtual_canvas_ctx.lineTo(lines[l][2],lines[l][3]);
+			virtual_canvas_ctx.stroke();
+		}
+		for(i=0;i<pravokutnici.length-1;i++){
+			virtual_canvas_ctx.beginPath();
+			virtual_canvas_ctx.moveTo((i+1)*50,0);
+			virtual_canvas_ctx.lineTo((i+1)*50,400);
+			virtual_canvas_ctx.stroke();
+		}
+		
+		for(i=0;i<pravokutnici[0].length-1;i++){
+			virtual_canvas_ctx.beginPath();
+			virtual_canvas_ctx.moveTo(0, (i+1)*20);
+			virtual_canvas_ctx.lineTo(400, (i+1)*20);
+			virtual_canvas_ctx.stroke();
+		}*/
+		var temp_image_data = virtual_canvas_for_background.getImageData(0,0,width,height);
+		document.body.insertBefore(virtual_canvas_for_background1);
+		var temp_data = temp_image_data.data;
+		for(var i=0;i<temp_data.length;i+=4){
+			var dy = Math.floor(i/4/width);
+			var dx = Math.floor(i/4%height);
+			if(temp_data[i]==255 && temp_data[i+1]==0 && temp_data[i+2]==0){
+				virtual_canvas_for_background.fillRect(dx,dy,1,1);
+				crvene_tocke.push([dx,dy]);
+			}
+		}
+		
+		virtual_canvas_image.src = virtual_canvas.toDataURL('image/png');
+		
+	}
+	loadImages();
+	init();
+	
+	animFrame(draw);
+	//setInterval(draw, 40);
+}
+
+
+
+//VEKTOR
+function vector(i,j){
+	this.i=i;
+	this.j=j;
+	
+}
+</script>
+</head>
+<body>
+<canvas id="canvas_id" style="border:1px solid red;" width=400 height=400></canvas>
+</body>
+</html>
