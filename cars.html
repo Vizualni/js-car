@@ -367,7 +367,7 @@ function game(){
 			virtual_canvas_ctx.stroke();
 		}*/
 		var temp_image_data = virtual_canvas_for_background.getImageData(0,0,width,height);
-		document.body.insertBefore(virtual_canvas_for_background1);
+		document.body.appendChild(virtual_canvas_for_background1);
 		var temp_data = temp_image_data.data;
 		for(var i=0;i<temp_data.length;i+=4){
 			var dy = Math.floor(i/4/width);
